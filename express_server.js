@@ -17,7 +17,7 @@ const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
 
-function generateRandomString(data) {
+const generateRandomString = (data) => {
   let output = ''
   let characters = 'abcdefghijklmnopqrstuvwxyz'
   for (let i = 0; i < 6; i++) {
@@ -29,6 +29,21 @@ function generateRandomString(data) {
   }
   if (data[output]) {
     output = generateRandomString();
+  }
+  return output;
+}
+
+const checkEmailAndPassword = (email, password) => {
+  let output = ''
+  if (!email || !password) {
+    output = "Email and password cannot be left blank";
+  } else {
+  let keys = Object.keys(users);
+  for (const key of keys) {
+    if (users[key]['email'] === email) {
+      output = "There is already an account registered to this email";
+    }
+  }
   }
   return output;
 }
@@ -111,6 +126,11 @@ app.get('/register', (req, res) => {
 app.post('/register', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
+  if (checkEmailAndPassword(email, password)) {
+    console.log(users);
+    res.status(400).send(checkEmailAndPassword(email, password));
+    res.end();
+  } else {
   const id = generateRandomString(users);
   users[id] = {
     id,
@@ -120,6 +140,7 @@ app.post('/register', (req, res) => {
   console.log(users);
   res.cookie('user_id', id);
   res.redirect('/urls');
+  }
 })
 
 app.post('/login', (req, res) => {
