@@ -143,6 +143,12 @@ app.post('/register', (req, res) => {
   }
 })
 
+app.get('/login', (req, res) => {
+  const userId = req.cookies['user_id'];
+  const templateVars = {userId: users[userId]};
+  res.render('login', templateVars);
+})
+
 app.post('/login', (req, res) => {
   const username = req.body.username
   res.cookie('username', username);
