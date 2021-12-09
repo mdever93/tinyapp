@@ -17,12 +17,14 @@
           <input type="submit" class="btn btn-primary" value="Logout" />
       </form>
       <% } else {%>
-        <form method="GET" action="/login">
+        <a class="nav-item nav-link" href="/login">Login</a>
+        <a class="nav-item nav-link" href="/register">Register</a>
+        <!-- <form method="GET" action="/login">
           <input type="submit" class="btn btn-primary" value="Login" />
         </form>
         <form method="GET" action="/register">
           <input type="submit" class="btn btn-primary" value="Register" />
-        </form>
+        </form> -->
         <% } %>
   </nav>
 </header>

@@ -33,22 +33,22 @@ const generateRandomString = (data) => {
   return output;
 }
 
-const checkEmailAndPassword = (email, password) => {
-  let output = ''
+const blankEmailOrPassword = (email, password) => {
   if (!email || !password) {
-    output = "Email and password cannot be left blank";
-  } else {
+    return true;
+  }
+  return false;
+}
+
+const checkEmail = (email) => {
   let keys = Object.keys(users);
   for (const key of keys) {
     if (users[key]['email'] === email) {
-      output = "There is already an account registered to this email";
+      return users[key];
     }
   }
-  }
-  return output;
+  return false;
 }
-
-
 
 app.post("/urls", (req, res) => {
   console.log(req.body);  // Log the POST request body to the console
@@ -126,9 +126,11 @@ app.get('/register', (req, res) => {
 app.post('/register', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  if (checkEmailAndPassword(email, password)) {
-    console.log(users);
-    res.status(400).send(checkEmailAndPassword(email, password));
+  if (blankEmailOrPassword(email, password)) {
+    res.status(400).send("Email and password cannot be left blank");
+    res.end();
+  } else if (checkEmail(email)) {
+    res.status(400).send("There is already an account registered to this email");
     res.end();
   } else {
   const id = generateRandomString(users);
@@ -150,12 +152,23 @@ app.get('/login', (req, res) => {
 })
 
 app.post('/login', (req, res) => {
-  const username = req.body.username
-  res.cookie('username', username);
-  // const templateVars = {
-  //   username: req.cookies['username']
-  // }
-  res.redirect('/urls')
+  const email = req.body.email;
+  const password = req.body.password;
+  if (!checkEmail(email)) {
+    res.status(403).send("Email does not match any registeres users");
+  } else {
+    let user = checkEmail(email);
+    if (user.password !== password) {
+      res.status(403).send("Incorrect password");
+    } else {
+      res.cookie('user_id', user.id);
+      // const templateVars = {
+      //   username: req.cookies['username']
+      // }
+      res.redirect('/urls')
+
+    }
+  }
 })
 
 app.post('/logout', (req, res) => {
