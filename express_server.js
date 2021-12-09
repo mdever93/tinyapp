@@ -113,6 +113,7 @@ app.get("/urls/new", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const userId = req.cookies['user_id'];
+  console.log(userId);
   const urls = getURLs(userId);
   const templateVars = {
     urls,
@@ -123,7 +124,7 @@ app.get("/urls", (req, res) => {
 
 app.get("/urls/:id", (req, res) => {
   let shortURL = req.params.id;
-  let longURL = urlDatabase[shortURL];
+  let longURL = urlDatabase[shortURL]['longURL'];
   const userId = req.cookies['user_id'];
   const templateVars = {
     shortURL, 
@@ -132,18 +133,22 @@ app.get("/urls/:id", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
-app.get('/urls/:id', (req, res) => {
-  const shortURL = req.params.id;
-  const longURL  = urlDatabase[shortURL];
-  const userId = req.cookies['user_id'];
-  const templateVars = {
-    shortURL: longURL,
-    userId: users[userId]};
-  res.render('urls_show', templateVars)
-})
+// app.get('/urls/:id', (req, res) => {
+//   const shortURL = req.params.id;
+//   const longURL  = urlDatabase[shortURL];
+//   const userId = req.cookies['user_id'];
+//   const templateVars = {
+//     shortURL: longURL,
+//     userId: users[userId]};
+//   res.render('urls_show', templateVars)
+// })
 
 app.post('/urls/:id', (req, res) => {
   const userId = req.cookies['user_id']
+  if (!users[userId]) {
+    res.status(403).send('Error: log in to delete short URLs')
+    return;
+  }
   const shortURL = req.params.id;
   const longURL = req.body.url;
   urlDatabase[shortURL] = {longURL, userId};
