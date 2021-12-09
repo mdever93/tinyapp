@@ -52,6 +52,12 @@ const checkEmail = (email) => {
 
 app.post("/urls", (req, res) => {
   console.log(req.body);  // Log the POST request body to the console
+  const userId = req.cookies['user_id'];
+  if (!users[userId]) {
+    res.status(403).send('Error: log in to create short URLs')
+    return;
+  }
+
   let longURL = req.body.longURL;
   let shortURL = generateRandomString(urlDatabase);
   urlDatabase[shortURL] = longURL;
@@ -67,6 +73,9 @@ app.get("/u/:shortURL", (req, res) => {
 
 app.get("/urls/new", (req, res) => {
   const userId = req.cookies['user_id'];
+  if (!users[userId]) {
+    res.redirect('/login')
+  }
   const templateVars = {userId: users[userId]};
   
   res.render("urls_new", templateVars);
@@ -118,6 +127,9 @@ app.post('/urls/:id/delete', (req, res) => {
 
 app.get('/register', (req, res) => {
   const userId = req.cookies['user_id'];
+  if (users[userId]) {
+    res.redirect('/urls')
+  }
   const templateVars = {userId: users[userId]};
 
   res.render('register', templateVars);
@@ -147,6 +159,9 @@ app.post('/register', (req, res) => {
 
 app.get('/login', (req, res) => {
   const userId = req.cookies['user_id'];
+  if (users[userId]) {
+    res.redirect('/urls')
+  }
   const templateVars = {userId: users[userId]};
   res.render('login', templateVars);
 })
@@ -154,8 +169,11 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  if (!checkEmail(email)) {
-    res.status(403).send("Email does not match any registeres users");
+  if (blankEmailOrPassword(email, password)) {
+    res.status(400).send("Email and password cannot be left blank");
+    res.end();
+  } else if (!checkEmail(email)) {
+    res.status(403).send("Email does not match any registered users");
   } else {
     let user = checkEmail(email);
     if (user.password !== password) {
