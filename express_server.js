@@ -1,9 +1,14 @@
+const {getUserByEmail} = require('./helpers');
+
 const express = require("express");
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session')
 const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = 8080; // default port 8080
-app.use(cookieParser())
+app.use(cookieSession({
+  name: 'session',
+  keys: ['B62261B5-44EA-4AFD-9B84-AC6E025FCCDA', 'B26C1923-F568-4F38-BC0B-39B469126487'],
+}))
 
 app.set("view engine", "ejs");
 
@@ -66,19 +71,9 @@ const blankEmailOrPassword = (email, password) => {
   return false;
 }
 
-const checkEmail = (email) => {
-  let keys = Object.keys(users);
-  for (const key of keys) {
-    if (users[key]['email'] === email) {
-      return users[key];
-    }
-  }
-  return false;
-}
-
 app.post("/urls", (req, res) => {
   console.log(req.body);  // Log the POST request body to the console
-  const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
   if (!users[userId]) {
     res.status(403).send('Error: log in to create short URLs')
     return;
@@ -93,7 +88,7 @@ app.post("/urls", (req, res) => {
 });
 
 app.get("/u/:id", (req, res) => {
-  const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
   if (!urlDatabase[req.params.id]) {
     res.status(404).send("Page not found");
     return;
@@ -103,7 +98,7 @@ app.get("/u/:id", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
   if (!users[userId]) {
     res.redirect('/login')
   }
@@ -113,20 +108,35 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
   console.log(userId);
   const urls = getURLs(userId);
   const templateVars = {
     urls,
     userId: users[userId]};
-    console.log(urls);
+    console.log('urls', urls);
+    console.log('users', userId);
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/:id", (req, res) => {
+  const userId = req.session.user_id;
+  const urlObject = urlDatabase[req.params.id];
+  if (!userId) {
+    res.status(403).send('Error: log in to update short URLs')
+    return;
+  }
+  if (!urlObject) {
+  res.status(404).send("Page not found");
+  return;
+  }
+  if (userId !== urlObject['userId']) {
+    res.status(403).send('Error: this short URL belongs to another account')
+    return;
+  }  
+
   let shortURL = req.params.id;
   let longURL = urlDatabase[shortURL]['longURL'];
-  const userId = req.cookies['user_id'];
   const templateVars = {
     shortURL, 
     longURL,
@@ -145,9 +155,9 @@ app.get("/urls/:id", (req, res) => {
 // })
 
 app.post('/urls/:id', (req, res) => {
-  const userId = req.cookies['user_id']
+  const userId = req.session.user_id;
   if (!users[userId]) {
-    res.status(403).send('Error: log in to delete short URLs')
+    res.status(403).send('Error: log in to update short URLs')
     return;
   }
   const shortURL = req.params.id;
@@ -158,7 +168,7 @@ app.post('/urls/:id', (req, res) => {
 })
 
 app.post('/urls/:id/delete', (req, res) => {
-  const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
   if (!users[userId]) {
     res.status(403).send('Error: log in to delete short URLs')
     return;
@@ -169,7 +179,7 @@ app.post('/urls/:id/delete', (req, res) => {
 })
 
 app.get('/register', (req, res) => {
-  const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
   if (users[userId]) {
     res.redirect('/urls')
   }
@@ -185,24 +195,25 @@ app.post('/register', (req, res) => {
   if (blankEmailOrPassword(email, password)) {
     res.status(400).send("Email and password cannot be left blank");
     res.end();
-  } else if (checkEmail(email)) {
+  } else if (getUserByEmail(email, users)) {
     res.status(400).send("There is already an account registered to this email");
     res.end();
   } else {
-  const id = generateRandomString(users);
-  users[id] = {
-    id,
+  const userId = generateRandomString(users);
+  users[userId] = {
+    userId,
     email,
     hashedPassword
   };
   console.log(users);
-  res.cookie('user_id', id);
+  // res.cookie('user_id', id);
+  req.session.user_id = userId;
   res.redirect('/urls');
   }
 })
 
 app.get('/login', (req, res) => {
-  const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
   if (users[userId]) {
     res.redirect('/urls')
   }
@@ -216,13 +227,15 @@ app.post('/login', (req, res) => {
   if (blankEmailOrPassword(email, password)) {
     res.status(400).send("Email and password cannot be left blank");
     res.end();
-  } else if (!checkEmail(email)) {
+  } else if (!getUserByEmail(email, users)) {
     res.status(403).send("Email does not match any registered users");
   } else {
-    const user = checkEmail(email);
+    const user = getUserByEmail(email, users);
     const hashedPassword = user.hashedPassword;
     if (bcrypt.compareSync(password, hashedPassword)) {
-      res.cookie('user_id', user.id);
+      const userId = user['userId']
+      console.log("app.post userid", userId);
+      req.session.user_id = userId;
       // const templateVars = {
       //   username: req.cookies['username']
       // }
@@ -235,7 +248,7 @@ app.post('/login', (req, res) => {
 })
 
 app.post('/logout', (req, res) => {
-  res.clearCookie('user_id');
+  req.session = null;
   res.redirect('/urls')
 })
 
