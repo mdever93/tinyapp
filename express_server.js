@@ -65,108 +65,6 @@ const blankEmailOrPassword = (email, password) => {
   return false;
 };
 
-app.post("/urls", (req, res) => { // Creates new short URL
-  const userId = req.session.user_id;
-  if (!users[userId]) {
-    res.status(403).send('Error: log in to create short URLs');
-    return;
-  }
-
-  let longURL = req.body.longURL;
-  let shortURL = generateRandomString(urlDatabase);
-  urlDatabase[shortURL] = { longURL, userId };
-  res.redirect('/urls/' + shortURL);
-  // res.send("Ok");         // Respond with 'Ok' (we will replace this)
-});
-
-app.get("/u/:id", (req, res) => { // Redirects user to URL associated with short URL
-  if (!urlDatabase[req.params.id]) {
-    res.status(404).send("Page not found");
-    return;
-  }
-  const longURL = urlDatabase[req.params.id]['longURL'];
-  res.redirect(longURL);
-});
-
-app.get("/urls/new", (req, res) => {  // Shows page where user can create new URLs
-  const userId = req.session.user_id;
-  if (!users[userId]) {
-    res.redirect('/login');
-  }
-  const templateVars = { userId: users[userId] };
-
-  res.render("urls_new", templateVars);
-});
-
-app.get("/urls", (req, res) => {  // Shows list of URLs user has created
-  const userId = req.session.user_id;
-  const urls = getURLs(userId);
-  const templateVars = {
-    urls,
-    userId: users[userId]
-  };
-  res.render("urls_index", templateVars);
-});
-
-app.get("/urls/:id", (req, res) => {  // Shows URL and short URL when user creates short URL or wants to edit a short URL
-  const userId = req.session.user_id;
-  const urlObject = urlDatabase[req.params.id];
-  if (!userId) {
-    res.status(403).send('Error: log in to update short URLs');
-    return;
-  }
-  if (!urlObject) {
-    res.status(404).send("Page not found");
-    return;
-  }
-  if (userId !== urlObject['userId']) {
-    res.status(403).send('Error: this short URL belongs to another account');
-    return;
-  }
-
-  let shortURL = req.params.id;
-  let longURL = urlDatabase[shortURL]['longURL'];
-  const templateVars = {
-    shortURL,
-    longURL,
-    userId: users[userId]
-  };
-  res.render("urls_show", templateVars);
-});
-
-// app.get('/urls/:id', (req, res) => {
-//   const shortURL = req.params.id;
-//   const longURL  = urlDatabase[shortURL];
-//   const userId = req.cookies['user_id'];
-//   const templateVars = {
-//     shortURL: longURL,
-//     userId: users[userId]};
-//   res.render('urls_show', templateVars)
-// })
-
-app.post('/urls/:id', (req, res) => { // Edits Existing URL
-  const userId = req.session.user_id;
-  if (!users[userId]) {
-    res.status(403).send('Error: log in to update short URLs');
-    return;
-  }
-  const shortURL = req.params.id;
-  const longURL = req.body.url;
-  urlDatabase[shortURL] = { longURL, userId };
-  res.redirect('/urls');
-});
-
-app.post('/urls/:id/delete', (req, res) => {  // Deletes short URL
-  const userId = req.session.user_id;
-  if (!users[userId]) {
-    res.status(403).send('Error: log in to delete short URLs');
-    return;
-  }
-  const shortURL = req.params.id;
-  delete urlDatabase[shortURL];
-  res.redirect('/urls');
-});
-
 app.get('/register', (req, res) => {  // Shows registration page
   const userId = req.session.user_id;
   if (users[userId]) {
@@ -194,7 +92,6 @@ app.post('/register', (req, res) => { // Checks that email is not already in dat
       email,
       hashedPassword
     };
-    // res.cookie('user_id', id);
     req.session.user_id = userId;
     res.redirect('/urls');
   }
@@ -223,9 +120,6 @@ app.post('/login', (req, res) => { // Checks email and password and logs user in
     if (bcrypt.compareSync(password, hashedPassword)) {
       const userId = user['userId'];
       req.session.user_id = userId;
-      // const templateVars = {
-      //   username: req.cookies['username']
-      // }
       res.redirect('/urls');
     } else {
       res.status(403).send("Incorrect password");
@@ -236,6 +130,97 @@ app.post('/login', (req, res) => { // Checks email and password and logs user in
 
 app.post('/logout', (req, res) => {
   req.session = null;
+  res.redirect('/urls');
+});
+
+app.get("/urls/new", (req, res) => {  // Shows page where user can create new URLs
+  const userId = req.session.user_id;
+  if (!users[userId]) {
+    res.redirect('/login');
+  }
+  const templateVars = { userId: users[userId] };
+
+  res.render("urls_new", templateVars);
+});
+
+app.post("/urls", (req, res) => { // Creates new short URL
+  const userId = req.session.user_id;
+  if (!users[userId]) {
+    res.status(403).send('Error: log in to create short URLs');
+    return;
+  }
+
+  let longURL = req.body.longURL;
+  let shortURL = generateRandomString(urlDatabase);
+  urlDatabase[shortURL] = { longURL, userId };
+  res.redirect('/urls/' + shortURL);
+});
+
+app.get("/urls/:id", (req, res) => {  // Shows URL and short URL when user creates short URL or wants to edit a short URL
+  const userId = req.session.user_id;
+  const urlObject = urlDatabase[req.params.id];
+  if (!userId) {
+    res.status(403).send('Error: log in to update short URLs');
+    return;
+  }
+  if (!urlObject) {
+    res.status(404).send("Page not found");
+    return;
+  }
+  if (userId !== urlObject['userId']) {
+    res.status(403).send('Error: this short URL belongs to another account');
+    return;
+  }
+
+  let shortURL = req.params.id;
+  let longURL = urlDatabase[shortURL]['longURL'];
+  const templateVars = {
+    shortURL,
+    longURL,
+    userId: users[userId]
+  };
+  res.render("urls_show", templateVars);
+});
+
+app.get("/u/:id", (req, res) => { // Redirects user to URL associated with short URL
+  if (!urlDatabase[req.params.id]) {
+    res.status(404).send("Page not found");
+    return;
+  }
+  const longURL = urlDatabase[req.params.id]['longURL'];
+  res.redirect(longURL);
+});
+
+app.get("/urls", (req, res) => {  // Shows list of URLs user has created
+  const userId = req.session.user_id;
+  const urls = getURLs(userId);
+  const templateVars = {
+    urls,
+    userId: users[userId]
+  };
+  res.render("urls_index", templateVars);
+});
+
+app.post('/urls/:id', (req, res) => { // Edits Existing URL
+  const userId = req.session.user_id;
+  if (!users[userId]) {
+    res.status(403).send('Error: log in to update short URLs');
+    return;
+  }
+  const shortURL = req.params.id;
+  const longURL = req.body.url;
+  urlDatabase[shortURL] = { longURL, userId };
+  res.redirect('/urls');
+});
+
+app.post('/urls/:id/delete', (req, res) => {  // Deletes short URL
+  const userId = req.session.user_id;
+  if (!users[userId]) {
+    res.status(403).send('Error: log in to delete short URLs');
+    return;
+  }
+  const shortURL = req.params.id;
+  delete urlDatabase[shortURL];
   res.redirect('/urls');
 });
 
